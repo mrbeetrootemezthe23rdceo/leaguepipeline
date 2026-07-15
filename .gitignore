@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+sample_match.json
+sample_timeline.json
