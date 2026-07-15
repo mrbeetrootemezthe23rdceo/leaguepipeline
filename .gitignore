@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 sample_match.json
 sample_timeline.json
+explore.py
