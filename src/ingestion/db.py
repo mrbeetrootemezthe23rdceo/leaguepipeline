@@ -58,3 +58,31 @@ def insert_events(conn, event_rows: list[tuple]):
         )
     conn.commit()
     cur.close()
+
+def mark_puuid_discovered(conn, puuid: str):
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO crawl_queue (puuid) VALUES (%s) ON CONFLICT (puuid) DO NOTHING",
+        (puuid,)
+    )
+    conn.commit()
+    cur.close()
+
+def mark_puuid_done(conn, puuid: str):
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE crawl_queue SET status = 'done' WHERE puuid = %s",
+        (puuid,)
+    )
+    conn.commit()
+    cur.close()
+
+def get_pending_puuids(conn, limit: int = 1000) -> list[str]:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT puuid FROM crawl_queue WHERE status = 'pending' LIMIT %s",
+        (limit,)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return [row[0] for row in rows]

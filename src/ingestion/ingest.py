@@ -13,7 +13,20 @@ from src.ingestion.db import (
     insert_participants,
     insert_frames,
     insert_events,
+    mark_puuid_discovered,
+    mark_puuid_done,
+    get_pending_puuids,
 )
+
+# Queue IDs for standard Summoner's Rift 5v5 modes we actually want to track.
+# Excludes Arena (1700), ARAM (450), URF, and other non-standard formats
+# that don't fit this schema's role/team assumptions.
+ALLOWED_QUEUE_IDS = {
+    400,  # Normal Draft
+    420,  # Ranked Solo/Duo
+    430,  # Normal Blind
+    440,  # Ranked Flex
+}
 
 def match_already_ingested(conn, match_id: str) -> bool:
     cur = conn.cursor()
@@ -29,6 +42,12 @@ def ingest_match(conn, match_id: str, region: str = "europe"):
 
     print(f"Ingesting {match_id}...")
     match = get_match(match_id, region=region)
+
+    queue_id = match["info"]["queueId"]
+    if queue_id not in ALLOWED_QUEUE_IDS:
+        print(f"Skipping {match_id} — queue {queue_id} not a tracked mode")
+        return None
+    
     timeline = get_match_timeline(match_id, region=region)
 
     match_row = extract_match_row(match_id, match)
@@ -55,16 +74,22 @@ def ingest_matches(match_ids: list[str], region: str = "europe"):
 
 
 
-def crawl(seed_puuids: list[str], region: str = "europe", max_matches: int = 500, matches_per_player: int = 20):
+def crawl(seed_puuids: list[str], region: str = "europe", max_matches: int = 500, matches_per_player: int = 100):
     conn = get_connection()
 
-    seen_puuids = set(seed_puuids)
-    queue = deque(seed_puuids)
+    for puuid in seed_puuids:
+        mark_puuid_discovered(conn, puuid)
+
     total_matches_ingested = 0
 
-    while queue and total_matches_ingested < max_matches:
-        current_puuid = queue.popleft()
-        print(f"\n--- Processing player {current_puuid[:8]}... ({len(queue)} left in queue, {total_matches_ingested} matches so far) ---")
+    while total_matches_ingested < max_matches:
+        pending = get_pending_puuids(conn, limit=1)
+        if not pending:
+            print("No more pending players in queue — crawl exhausted.")
+            break
+
+        current_puuid = pending[0]
+        print(f"\n--- Processing player {current_puuid[:8]}... ({total_matches_ingested} matches so far) ---")
 
         try:
             match_ids = get_match_ids(current_puuid, region=region, count=matches_per_player)
@@ -81,6 +106,8 @@ def crawl(seed_puuids: list[str], region: str = "europe", max_matches: int = 500
 
             try:
                 match_json = ingest_match(conn, match_id, region=region)
+                if match_json is None:
+                    continue
                 total_matches_ingested += 1
             except Exception as e:
                 print(f"Failed to ingest {match_id}: {e}")
@@ -88,15 +115,14 @@ def crawl(seed_puuids: list[str], region: str = "europe", max_matches: int = 500
 
             new_puuids = [p["puuid"] for p in match_json["info"]["participants"]]
             for puuid in new_puuids:
-                if puuid not in seen_puuids:
-                    seen_puuids.add(puuid)
-                    queue.append(puuid)
+                mark_puuid_discovered(conn, puuid)
 
-                    
+        mark_puuid_done(conn, current_puuid)
 
     conn.close()
-    print(f"\nCrawl finished. Total matches ingested: {total_matches_ingested}, unique players discovered: {len(seen_puuids)}")
+    print(f"\nCrawl finished. Total matches ingested this run: {total_matches_ingested}")
 
 if __name__ == "__main__":
     my_puuid = get_puuid("brandtop", "1234", region="europe")
-    crawl(seed_puuids=[my_puuid], max_matches=50, matches_per_player=100)
+    crawl(seed_puuids=[my_puuid], max_matches=500, matches_per_player=100)
+
