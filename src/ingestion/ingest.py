@@ -43,14 +43,13 @@ def ingest_match(conn, match_id: str, region: str = "europe"):
         print(f"Skipping {match_id} — queue {queue_id} not a tracked mode")
         return None
 
-
     match_row = extract_match_row(match_id, match)
     insert_match(conn, match_row)
 
     participant_rows = extract_participant_rows(match_id, match)
     insert_participants(conn, participant_rows)
 
-    print(f"Done: {match_id} — {len(participant_rows)} participants, {len(frame_rows)} frames, {len(event_rows)} events")
+    print(f"Done: {match_id} — {len(participant_rows)} participants")
     return match
 
 def ingest_matches(match_ids: list[str], region: str = "europe"):
