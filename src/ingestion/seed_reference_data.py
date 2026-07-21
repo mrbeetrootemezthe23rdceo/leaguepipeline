@@ -30,20 +30,6 @@ def seed_champions(conn, champions):
     conn.commit()
     cur.close()
 
-def seed_items(conn, items):
-    cur = conn.cursor()
-    for item_id, name in items:
-        cur.execute(
-            """
-            INSERT INTO items (item_id, name)
-            VALUES (%s, %s)
-            ON CONFLICT (item_id) DO UPDATE SET name = EXCLUDED.name
-            """,
-            (item_id, name)
-        )
-    conn.commit()
-    cur.close()
-
 if __name__ == "__main__":
     version = get_latest_version()
     print("Using Data Dragon version:", version)

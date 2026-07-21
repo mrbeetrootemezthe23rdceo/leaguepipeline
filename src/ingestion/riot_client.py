@@ -59,22 +59,6 @@ def get_match(match_id: str, region: str = "europe") -> dict:
 
     raise Exception(f"get_match failed after 5 retries: {match_id}")
 
-def get_match_timeline(match_id: str, region: str = "europe") -> dict:
-    throttle()
-    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline"
-
-    for attempt in range(5):
-        resp = requests.get(url, headers=HEADERS)
-        if resp.status_code == 429:
-            retry_after = int(resp.headers.get("Retry-After", 5))
-            print(f"429 on get_match_timeline, sleeping {retry_after}s (attempt {attempt + 1}/5)")
-            time.sleep(retry_after)
-            continue
-        resp.raise_for_status()
-        return resp.json()
-
-    raise Exception(f"get_match_timeline failed after 5 retries: {match_id}")
-
 
 def throttle():
     now = time.time()

@@ -1,18 +1,13 @@
-from src.ingestion.riot_client import get_match, get_match_timeline, get_puuid, get_match_ids
+from src.ingestion.riot_client import get_match, get_puuid, get_match_ids
 from collections import deque
 from src.ingestion.transform import (
     extract_match_row,
     extract_participant_rows,
-    build_participant_id_map,
-    extract_frame_rows,
-    extract_event_rows,
 )
 from src.ingestion.db import (
     get_connection,
     insert_match,
     insert_participants,
-    insert_frames,
-    insert_events,
     mark_puuid_discovered,
     mark_puuid_done,
     get_pending_puuids,
@@ -47,21 +42,13 @@ def ingest_match(conn, match_id: str, region: str = "europe"):
     if queue_id not in ALLOWED_QUEUE_IDS:
         print(f"Skipping {match_id} — queue {queue_id} not a tracked mode")
         return None
-    
-    timeline = get_match_timeline(match_id, region=region)
+
 
     match_row = extract_match_row(match_id, match)
     insert_match(conn, match_row)
 
     participant_rows = extract_participant_rows(match_id, match)
     insert_participants(conn, participant_rows)
-
-    id_map = build_participant_id_map(match)
-    frame_rows = extract_frame_rows(match_id, timeline, id_map)
-    insert_frames(conn, frame_rows)
-
-    event_rows = extract_event_rows(match_id, timeline, id_map)
-    insert_events(conn, event_rows)
 
     print(f"Done: {match_id} — {len(participant_rows)} participants, {len(frame_rows)} frames, {len(event_rows)} events")
     return match
