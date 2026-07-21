@@ -1,6 +1,7 @@
 CREATE TABLE champions (
     champion_id INT PRIMARY KEY,
     name TEXT NOT NULL
+    riot_id TEXT
 );
 
 CREATE TABLE items (

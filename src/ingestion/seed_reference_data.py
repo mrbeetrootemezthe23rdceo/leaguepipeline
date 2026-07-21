@@ -8,8 +8,7 @@ def get_latest_version():
 def fetch_champions(version):
     url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
     data = requests.get(url).json()
-    # returns list of (champion_id: int, name: str)
-    return [(int(info["key"]), info["name"]) for info in data["data"].values()]
+    return [(int(info["key"]), info["name"], info["id"]) for info in data["data"].values()]
 
 def fetch_items(version):
     url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/item.json"
@@ -19,14 +18,14 @@ def fetch_items(version):
 
 def seed_champions(conn, champions):
     cur = conn.cursor()
-    for champion_id, name in champions:
+    for champion_id, name, riot_id in champions:
         cur.execute(
             """
-            INSERT INTO champions (champion_id, name)
-            VALUES (%s, %s)
-            ON CONFLICT (champion_id) DO UPDATE SET name = EXCLUDED.name
+            INSERT INTO champions (champion_id, name, riot_id)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (champion_id) DO UPDATE SET name = EXCLUDED.name, riot_id = EXCLUDED.riot_id
             """,
-            (champion_id, name)
+            (champion_id, name, riot_id)
         )
     conn.commit()
     cur.close()
