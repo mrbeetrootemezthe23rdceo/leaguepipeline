@@ -3,7 +3,7 @@ import json
 from src.ingestion.riot_client import get_puuid, get_match_ids, get_match, get_match_timeline
 from src.ingestion.db import get_connection
 
-puuid = get_puuid("brandtop", "1234", region="europe")
+puuid = get_puuid("your_riot_id", "1234", region="europe")
 print("PUUID:", puuid)
 
 match_ids = get_match_ids(puuid, region="europe", count=5)
